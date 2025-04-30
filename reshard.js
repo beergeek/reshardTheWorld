@@ -96,7 +96,7 @@ context.getCollectionNames().forEach(function(collection){
         print("Collection shard key is correct and collection is too small to redistribute");
         return;
       } else if (found === "" && shardKey != {"_id":1} ) {
-        print(found);
+        print("Required shard key and options: "+found);
         //this means we should not be using a non-_id shard key and the shard key is not _id
         print("Collection is sharded but not by _id");
         shardKey = { "_id": 1 };
