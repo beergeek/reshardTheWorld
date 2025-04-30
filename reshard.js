@@ -84,7 +84,11 @@ context.getCollectionNames().forEach(function(collection){
 
       // Check if the collection should be using a non-_id shard key and if this is correct for the shard
       var found = nonIDCollections.find(obj => Object.keys(obj)[0] === collection);
-      print(JSON.stringify(found));
+      if (found) {
+        print("Required shard key: "+JSON.stringify(found));
+      } else {
+        print("Required shard key: "+JSON.stringify({"_id":1}));
+      }
       if (found && shardKey != found[collection][0] && unique != found[collection][1]) {
         print("Collection is not sharded by "+ JSON.stringify(found[collection][0]) + " or the unique setting for the index is incorrect");
         shardKey = found[collection][0];
