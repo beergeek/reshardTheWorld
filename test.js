@@ -14,6 +14,7 @@ Use cases:
 * Current sharded collection that is empty with correct shard key
 * Current sharded collection that is empty and should be sharded
 
+* goodLagers should be sharded by _id but is sharded by name
 */
 sh.getBalancerState()
 sh.stopBalancer()
