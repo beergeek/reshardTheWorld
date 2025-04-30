@@ -99,7 +99,7 @@ context.getCollectionNames().forEach(function(collection){
         // if this is true the shardkey is correct and the collection is too small to redistribute
         print("Collection shard key is correct and collection is too small to redistribute");
         return;
-      } else if (found === "" && shardKey != {"_id":1} ) {
+      } else if (found === "" && shardKey._id != 1 ) {
         print("Required shard key and options: "+found);
         //this means we should not be using a non-_id shard key and the shard key is not _id
         print("Collection is sharded but not by _id");
@@ -116,8 +116,8 @@ context.getCollectionNames().forEach(function(collection){
         } else {
           print("Creating index on shard key: " + JSON.stringify(shardKey));
           var res = context.collection.createIndex(shardKey, { unique: unique });
+          print("Index created: " + JSON.stringify(res));
         }
-        print("Index created: " + JSON.stringify(res));
       } catch (e) {
         print("Error creating index: " + e);
       }
