@@ -4,9 +4,10 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
   }
   try {
     var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
-    print(JSON.stringify(result));
+    //print(JSON.stringify(result));
     return true;
   } catch(e) {
+    print(e);
     if (e.errorRsponse.code == 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       var initialChunks = e.errorRsponse.split(" ")[-2];
@@ -16,7 +17,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
   }
 }
 var unshardedList = [ "megaBeers" ];
-var nonIDCollections = [ {"goodBeers": [{"name": 1}, true]}, {"goodLagers": [{"name": 1}, false]} ];
+var nonIDCollections = [ {"goodBeers": [{"name": 1}, false]}, {"goodLagers": [{"name": 1}, false]} ];
 var database="beers";
 var configDB = db.getSiblingDB("config");
  
@@ -106,7 +107,7 @@ context.getCollectionNames().forEach(function(collection){
         shardKey = {"_id": 1};
       } else if (forceRedistribution == false) {
         // if this is true the shardkey is correct and the collection is too small to redistribute
-        print("Collection shard key is correct and collection is too small to redistribute");
+        print("Collection shard key is correct and collection is too small to redistribute or already distributed");
         return;
       }
       print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(shardKey)+" and unique "+unique+" and forceRedistribution "+forceRedistribution);
@@ -119,7 +120,11 @@ context.getCollectionNames().forEach(function(collection){
           print("Index created: " + JSON.stringify(res));
         }
       } catch (e) {
-        print("Error creating index: " + e);
+        if (e.match(/An existing index has the same name as the requested index/)) {
+          print("Index already exists, not creating");
+        } else {
+          print("Error creating index: " + e);
+        }
       }
       success = reshardCollection(database+"."+collection, shardKey, unique, forceRedistribution);
       if (success) {
@@ -145,7 +150,12 @@ context.getCollectionNames().forEach(function(collection){
 })
 
 
-sh.setBalancerState(true);
-sh.startBalancer();
+var bs = sh.setBalancerState(true);
+balancerState = sh.startBalancer();
+if (balancerState) {
+  print("Balancer is running");
+} else {
+  print("Balancer is not running");
+}
 
     
