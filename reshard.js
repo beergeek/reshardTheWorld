@@ -15,9 +15,9 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     }
   }
 }
-var unshardedList = [ "minorClowns" ];
-var nonIDCollections = [ {"megaClowns": [{"clownID": 1}, true]}, {"sillyClowns": [{"clownID": 1}, false]} ];
-var database="clowns";
+var unshardedList = [ "minorbeers" ];
+var nonIDCollections = [ {"megabeers": [{"clownID": 1}, true]}, {"sillybeers": [{"clownID": 1}, false]} ];
+var database="beers";
 var configDB = db.getSiblingDB("config");
  
 context=db.getSiblingDB(database);
