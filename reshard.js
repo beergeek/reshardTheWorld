@@ -106,6 +106,11 @@ context.getCollectionNames().forEach(function(collection){
         return;
       }
       print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(shardKey)+" and unique "+unique+" and forceRedistribution "+forceRedistribution);
+      try {
+        var res = db.createIndex(collection, shardKey, { unique: unique });
+      } catch (e) {
+        print("Error creating index: " + e);
+      }
       success = reshardCollection(database+"."+collection, shardKey, unique, forceRedistribution);
       if (success) {
         print("Collection is sharded correctly");
