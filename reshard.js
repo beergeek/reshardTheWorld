@@ -79,8 +79,8 @@ context.getCollectionNames().forEach(function(collection){
           }
         }
       });
-      print("Shard Key: " + JSON.stringify(shardKey));
-      print("Unique: " + unique);
+      print("Current Shard Key: " + JSON.stringify(shardKey));
+      print("Current Unique Value: " + unique);
 
       // Check if the collection should be using a non-_id shard key and if this is correct for the shard
       var found = nonIDCollections.find(obj => Object.keys(obj)[0] === collection);
