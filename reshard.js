@@ -3,7 +3,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     return false;
   }
   try {
-    var result = db.adminCommand({ shardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
+    var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
     print(JSON.stringify(result));
     return true;
   } catch(e) {
