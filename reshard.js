@@ -107,7 +107,11 @@ context.getCollectionNames().forEach(function(collection){
       }
       print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(shardKey)+" and unique "+unique+" and forceRedistribution "+forceRedistribution);
       try {
-        var res = context.collection.createIndex(shardKey, { unique: unique });
+        if (shardKey == { "_id": 1 }) {
+          var res = context.collection.createIndex(shardKey);
+        } else {
+          var res = context.collection.createIndex(shardKey, { unique: unique });
+        }
         print("Index created: " + JSON.stringify(res));
       } catch (e) {
         print("Error creating index: " + e);
