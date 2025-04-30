@@ -103,7 +103,7 @@ context.getCollectionNames().forEach(function(collection){
         print("Required shard key and options: "+found);
         //this means we should not be using a non-_id shard key and the shard key is not _id
         print("Collection is sharded but not by _id");
-        shardKey = { "_id": 1 };
+        shardKey = {"_id": 1};
       } else if (forceRedistribution == false) {
         // if this is true the shardkey is correct and the collection is too small to redistribute
         print("Collection shard key is correct and collection is too small to redistribute");
@@ -111,7 +111,7 @@ context.getCollectionNames().forEach(function(collection){
       }
       print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(shardKey)+" and unique "+unique+" and forceRedistribution "+forceRedistribution);
       try {
-        if (shardKey == {"_id":1}) {
+        if (shardKey._id === 1) {
           print("Not creating index as using default _id index");
         } else {
           print("Creating index on shard key: " + JSON.stringify(shardKey));
