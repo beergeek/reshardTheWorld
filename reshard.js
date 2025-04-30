@@ -31,8 +31,6 @@ if (balancerState) {
 var shardCount = sh.listShards().length;
 print("Shard Count: " + shardCount);
 var shardDist = sh.getShardedDataDistribution();
-
-print(sh.getBalancerState());
  
 context.getCollectionNames().forEach(function(collection){
 
