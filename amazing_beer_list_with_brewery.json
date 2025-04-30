@@ -34166,7 +34166,7 @@ db.getSiblingDB("beers").getCollection("megaBeers").insertMany([
     "ibu": 41,
     "brewery": "Cranky Brew Works"
   },
-  {g
+  {
     "name": "Divine23 Artifact9 Brew4",
     "description": "Blessed by monks, approved by immortals.",
     "abv": 14.4,
