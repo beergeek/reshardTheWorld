@@ -114,6 +114,7 @@ context.getCollectionNames().forEach(function(collection){
         if (shardKey == { "_id": 1 }) {
           print("Not creating index as using default _id index");
         } else {
+          print("Creating index on shard key: " + JSON.stringify(shardKey));
           var res = context.collection.createIndex(shardKey, { unique: unique });
         }
         print("Index created: " + JSON.stringify(res));
