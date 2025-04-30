@@ -1,4 +1,4 @@
-[
+db.getSiblingDB("beers").getCollection("goodBeers").insertMany([
   {
     "name": "Beardy Banana Bock on Toast",
     "description": "Infused with essence of imaginary creatures.",
@@ -11999,4 +11999,4 @@
     "abv": 6.0,
     "ibu": 68
   }
-]
+])
