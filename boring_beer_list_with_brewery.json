@@ -1,4 +1,4 @@
-db.getSiblingDB("beers").getCollection("mainStreamBeers").insertMany([
+db.getSiblingDB("dev_beers").getCollection("mainStreamBeers").insertMany([
   {
     "name": "Generic90 BeerType81",
     "description": "Pleasingly average in every way.",

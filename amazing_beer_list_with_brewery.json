@@ -1,4 +1,4 @@
-db.getSiblingDB("beers").getCollection("megaBeers").insertMany([
+db.getSiblingDB("dev_beers").getCollection("megaBeers").insertMany([
   {
     "name": "Divine8 Artifact10 Brew4",
     "description": "Rumored to have caused enlightenment after one pint.",
