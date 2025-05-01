@@ -6,7 +6,6 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
     return true;
   } catch(e) {
-    print(e.errorResponse.code);
     if (e.errorResponse.code === 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       print(e.errorResponse.errmsg);
