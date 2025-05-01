@@ -3,12 +3,14 @@ NOTE: You cannot reshard a collection from one unique shard key or non-unique sh
 to unshard and then shard the collection again letting the balancer do the work, not resharding.
 */
 const assert = require('assert');
+
 function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunks = 90, count = 0) {
   if (count > 5) {
     return false;
   }
   try {
     var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
+    print(result);
     return true;
   } catch(e) {
     if (e.errorResponse.code === 4952606) {
@@ -74,6 +76,8 @@ var database=collection_setup[0].name;
 var configDB = db.getSiblingDB("config");
  
 context=db.getSiblingDB(database);
+
+// Stop the balancer for resharding operations
 sh.stopBalancer();
 sh.setBalancerState(false);
 var balancerState = sh.getBalancerState();
@@ -84,17 +88,20 @@ if (balancerState) {
 var shard_details = sh.listShards();
 var shardCount = shard_details.length;
 var shardNames = [];
+// Get the shard names
 shard_details.forEach(function(shard) {
   shardNames.push(shard._id);
 });
 print("Shard Count: " + shardCount);
 var shardDist = sh.getShardedDataDistribution();
- 
+
+// Iterate over the collections in the database
 context.getCollectionNames().forEach(function(collection){
 
     print("\n"+database+"."+collection+"\n=========================================================");
 
     var stats = context.getCollection(collection).stats();
+    // Check if the collection is sharded
     if (stats.sharded) {
       print(database+"."+collection+" is sharded");
 
@@ -107,6 +114,7 @@ context.getCollectionNames().forEach(function(collection){
       // Check if we should be unsharded
       var described = false;
       var count = 0;
+      // Check if the collection is supposed to be sharded or unsharded, and get the shard key and unique index settings
       collection_setup[0].collections.forEach(function(coll) {
         if (coll.name == collection) {
           if (coll.shared == false) {
@@ -154,7 +162,7 @@ context.getCollectionNames().forEach(function(collection){
         })
       }
 
-      // get shard key and unique index settings
+      // get current shard key and unique index settings
       configDB.collections.find({}).forEach(function(ns) {
         if (ns._id == database + "." + collection) {
           currentShardKey = ns.key;
@@ -188,12 +196,14 @@ context.getCollectionNames().forEach(function(collection){
           reIndex = true;
         }
       }
+      // Check if the collection should be using the right unique index setting
       if (currentUnique !== requiredUnique) {
         print("Collection is not using the correct unique index setting");
         if (reIndex === true && requiredUnique == true) {
           print("We cannot transition from one unique index to another unique index or from a non-unique index to a unique index, this requires manual intervention");
           return;
       }
+      // If we need to reshard go ahead and create the index and then reshard
       if (reIndex == true) {
         print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to false and forceRedistribution set to "+forceRedistribution);
         var tempIndex = false;
