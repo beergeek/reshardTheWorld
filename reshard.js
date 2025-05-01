@@ -7,12 +7,17 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     //print(JSON.stringify(result));
     return true;
   } catch(e) {
-    print(e);
-    if (e.errorRsponse.code == 4952606) {
+    if (e.errorResponse.code == 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       var initialChunks = e.errorRsponse.split(" ")[-2];
       print(initialChunks);
       reshardCollection(ns, key, unique, forceRedistribution, initialChunks, count + 1);
+    } else if (e.errorResponse.code == 338) {
+      print("Sharding operations already in progress, exiting this script")
+      exit(1);
+    } else {
+      print("Error: " + e.errorResponse.errmsg);
+      return false;
     }
   }
 }
@@ -106,7 +111,7 @@ context.getCollectionNames().forEach(function(collection){
         }
       })
       if (described == false) {
-        print("%c"+database+"."+collection+" collection is not registered", "color: red");
+        print(database+"."+collection+" collection is not registered");
         return;
       }
 
@@ -157,19 +162,20 @@ context.getCollectionNames().forEach(function(collection){
       try {
         if (requiredShardKey._id === 1) {
           print("Not creating index as using default _id index");
+          requiredUnique = false;
         } else {
-          print("Creating index on shard key: " + JSON.stringify(requireShardKey));
-          var res = context.collection.createIndex(requireShardKey, { unique: requiredUnique });
+          print("Creating index on shard key: " + JSON.stringify(requiredShardKey));
+          var res = context.collection.createIndex(requiredShardKey, { unique: requiredUnique });
           print("Index created: " + JSON.stringify(res));
         }
       } catch (e) {
-        if (e.match(/An existing index has the same name as the requested index/)) {
+        if (/An existing index has the same name as the requested index/.test(e)) {
           print("Index already exists, not creating");
         } else {
-          print("Error creating index: " + e);
+          print("Error creating index: " + e.errorResponse.errmsg);
         }
       }
-      success = reshardCollection(database+"."+collection, shardKey, unique, forceRedistribution);
+      success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
       if (success) {
         print("Collection is sharded correctly");
       } else {
@@ -198,13 +204,17 @@ context.getCollectionNames().forEach(function(collection){
                 print("Index created: " + JSON.stringify(res));
               }
             } catch (e) {
-              if (e.match(/An existing index has the same name as the requested index/)) {
+              if (/An existing index has the same name as the requested index/.test(e)) {
                 print("Index already exists, not creating");
               } else {
                 print("Error creating index: " + e);
               }
+            }
+            try {
               print("Sharing collection");
               sh.shardAndDistributeCollection(database+"."+collection, nonIDKey);
+            } catch (e) {
+              print(e.errorRsponse.errmsg);
             }
           } else {
             print("Collection is not registered as sharded or unsharded, skipping");
@@ -213,7 +223,7 @@ context.getCollectionNames().forEach(function(collection){
         }
       })
       if (described == false) {
-        print("%c"+database+"."+collection+" collection is not registered", "color: red");
+        print(database+"."+collection+" collection is not registered");
         return;
       }
     }
