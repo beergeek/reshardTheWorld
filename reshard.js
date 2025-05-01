@@ -117,6 +117,7 @@ context.getCollectionNames().forEach(function(collection){
             if (typeof coll.unique === "undefined") {
               requiredUnique = false;
             } else if (JSON.stringify(requiredShardKey) == JSON.stringify({ "_id": 1 })) {
+              print("Required shard key is _id, so always unique");
               requiredUnique = true;
             } else {
               requiredUnique = coll.unique;
