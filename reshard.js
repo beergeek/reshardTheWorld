@@ -218,7 +218,7 @@ context.getCollectionNames().forEach(function(collection){
       var described = false;
       collection_setup[0].collections.forEach(function(coll) {
         if (coll.name == collection) {
-          if (coll.shared == false) {
+          if (coll.sharded == false) {
             print("Collection is supposed to be unsharded, skipping");
             return;
           } else if (coll.shared == true) {
