@@ -4,16 +4,20 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
   }
   try {
     var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
-    //print(JSON.stringify(result));
     return true;
   } catch(e) {
     print(e.errorResponse.code);
-    if (e.errorResponse.code == 4952606) {
+    if (e.errorResponse.code === 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
-      var initialChunks = e.errorRsponse.split(" ")[-2];
+      print(e.errorResponse.errmsg);
+      var exploded_msg = e.errorResponse.errmsg.split(" ");
+      var initialChunks = parseInt(exploded_msg[exploded_msg.length - 2]);
       print(initialChunks);
+      if (initialChunks == 1) {
+        return true;
+      }
       reshardCollection(ns, key, unique, forceRedistribution, initialChunks, count + 1);
-    } else if (e.errorResponse.code == 338) {
+    } else if (e.errorResponse.code === 338) {
       print("Sharding operations already in progress, exiting this script")
       return false;
     } else {
@@ -102,7 +106,11 @@ context.getCollectionNames().forEach(function(collection){
           } else if (coll.shared == true) {
             print("Collection is supposed to be sharded");
             requiredShardKey = coll.shardKey;
-            requiredUnique = coll.unique;
+            if (typeof coll.unique === "undefined") {
+              requiredUnique = false;
+            } else {
+              requiredUnique = coll.unique;
+            }
             described = true;
             shared = true;
           } else {
@@ -160,11 +168,27 @@ context.getCollectionNames().forEach(function(collection){
         print("Collection is not using the correct unique index setting");
       }
       print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to "+requiredUnique+" and forceRedistribution set to "+forceRedistribution);
+      var tempIndex = false;
       try {
         if (requiredShardKey._id === 1) {
           print("Not creating index as using default _id index");
           requiredUnique = false;
         } else {
+          if (requiredUnique == true && currentUnique !== requiredUnique) {
+            print("Current index is not unique, but required index is unique. This requires a multi-step process to fix");
+            try {
+              context.collection.createIndex(requiredShardKey, { name: "tempIndex"});
+              tempIndex = true;
+              var success = reshardCollection(database+"."+collection, requiredShardKey, false, forceRedistribution);
+              if (success) {
+                print("Collection is sharded correctly");
+              } else {
+                print("Collection is not sharded correctly");
+              }
+            } catch (e) {
+              print(e.errorResponse.errmsg);
+            }
+          }
           print("Creating index on shard key: " + JSON.stringify(requiredShardKey));
           var res = context.collection.createIndex(requiredShardKey, { unique: requiredUnique });
           print("Index created: " + JSON.stringify(res));
@@ -176,9 +200,13 @@ context.getCollectionNames().forEach(function(collection){
           print("Error creating index: " + e.errorResponse.errmsg);
         }
       }
-      success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
+      var success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
       if (success) {
         print("Collection is sharded correctly");
+        if (tempIndex == true) {
+          print("Dropping temporary index");
+          context.collection.dropIndex("tempIndex");
+        }
       } else {
         print("Collection is not sharded correctly");
       }
