@@ -7,6 +7,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     //print(JSON.stringify(result));
     return true;
   } catch(e) {
+    print(e.errorResponse.code);
     if (e.errorResponse.code == 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       var initialChunks = e.errorRsponse.split(" ")[-2];
