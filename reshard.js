@@ -47,7 +47,7 @@ var collection_setup = [
         "name": "mainStreamBeers",
         "shared": true,
         "shardKey": { "_id": 1 },
-        "unique": false
+        "unique": true
       },
       {
         "name": "megaBeers",
@@ -116,6 +116,8 @@ context.getCollectionNames().forEach(function(collection){
             requiredShardKey = coll.shardKey;
             if (typeof coll.unique === "undefined") {
               requiredUnique = false;
+            } else if (JSON.stringify(requiredShardKey) == JSON.stringify({ "_id": 1 })) {
+              requiredUnique = true;
             } else {
               requiredUnique = coll.unique;
             }
