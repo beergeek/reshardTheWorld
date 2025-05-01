@@ -13,7 +13,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     print(result);
     return true;
   } catch(e) {
-    print(e.errorResponse);
+    print(e);
     if (e.errorResponse.code === 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       print(e.errorResponse.errmsg);
@@ -203,6 +203,7 @@ context.getCollectionNames().forEach(function(collection){
         if (reIndex === true && requiredUnique == true) {
           print("We cannot transition from one unique index to another unique index or from a non-unique index to a unique index, this requires manual intervention");
           return;
+        }
       }
       // If we need to reshard go ahead and create the index and then reshard
       if (reIndex == true) {
@@ -280,7 +281,6 @@ context.getCollectionNames().forEach(function(collection){
         print(database+"."+collection+" collection is not registered");
         return;
       }
-    }
     }
 })
 
