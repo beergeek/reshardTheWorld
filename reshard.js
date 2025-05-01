@@ -220,6 +220,7 @@ context.getCollectionNames().forEach(function(collection){
         if (coll.name == collection) {
           if (coll.shared == false) {
             print("Collection is supposed to be unsharded, skipping");
+            return;
           } else if (coll.shared == true) {
             print("Collection is supposed to be sharded");
             requiredShardKey = coll.shardKey;
