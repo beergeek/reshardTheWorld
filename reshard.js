@@ -262,7 +262,7 @@ context.getCollectionNames().forEach(function(collection){
 
 })
 
-
+print("\n==========Completing ==========================================================\n");
 var bs = sh.setBalancerState(true);
 balancerState = sh.startBalancer();
 if (balancerState) {
