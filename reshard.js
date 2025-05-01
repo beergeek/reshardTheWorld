@@ -1,3 +1,4 @@
+const assert = require('assert');
 function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunks = 90, count = 0) {
   if (count > 5) {
     return false;
@@ -141,73 +142,77 @@ context.getCollectionNames().forEach(function(collection){
       // get shard key and unique index settings
       configDB.collections.find({}).forEach(function(ns) {
         if (ns._id == database + "." + collection) {
-          shardKey = ns.key;
+          currentShardKey = ns.key;
           if (ns.unique == null) {
-            unique = false;
+            currentUnique = false;
           } else if (ns.unique == true) {
-            unique = true;
+            currentUnique = true;
           } else {
-            unique = false;
+            currentUnique = false;
           }
         }
       });
-      print("Current Shard Key: " + JSON.stringify(shardKey));
-      print("Current Unique Value: " + unique);
+      print("Current Shard Key: " + JSON.stringify(currentShardKey));
+      print("Current Unique Value: " + currentUnique);
+      print("Required Shard Key: " + JSON.stringify(requiredShardKey));
+      print("Required Unique Value: " + requiredUnique);
+      var reIndex = false;
 
       // Check if the collection should be using the right shard key
       if (requiredShardKey === currentShardKey && requiredUnique === currentUnique && forceRedistribution == false) {
         print("Collection is using the correct shard key and unique setting, and does not need to be redistributed");
         return;
       }
-      if (currentShardKey !== requiredShardKey) {
-        print("Collection is not using the correct shard key");
-        
-      }
-      if (currentUnique !== requiredUnique) {
-        print("Collection is not using the correct unique index setting");
-      }
-      print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to "+requiredUnique+" and forceRedistribution set to "+forceRedistribution);
-      var tempIndex = false;
       try {
-        if (requiredShardKey._id === 1) {
-          print("Not creating index as using default _id index");
-          requiredUnique = false;
-        } else {
-          if (requiredUnique == true && currentUnique !== requiredUnique) {
-            print("Current index is not unique, but required index is unique. This requires a multi-step process to fix");
-            try {
-              context.collection.createIndex(requiredShardKey, { name: "tempIndex"});
-              tempIndex = true;
-              var success = reshardCollection(database+"."+collection, requiredShardKey, false, forceRedistribution);
-              if (success) {
-                print("Collection is sharded correctly");
-              } else {
-                print("Collection is not sharded correctly");
-              }
-            } catch (e) {
-              print(e.errorResponse.errmsg);
-            }
-          }
-          print("Creating index on shard key: " + JSON.stringify(requiredShardKey));
-          var res = context.collection.createIndex(requiredShardKey, { unique: requiredUnique });
-          print("Index created: " + JSON.stringify(res));
+        if (assert.deepStrictEqual(JSON.parse(currentShardKey), JSON.parse(requiredShardKey))) {
+          print("Collection is using the correct shard key");
         }
       } catch (e) {
-        if (/An existing index has the same name as the requested index/.test(e)) {
-          print("Index already exists, not creating");
-        } else {
-          print("Error creating index: " + e.errorResponse.errmsg);
+        if (e instanceof assert.AssertionError) {
+          print("Collection is not using the correct shard key"+ JSON.stringify(e));
+          reIndex = true;
         }
       }
-      var success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
-      if (success) {
-        print("Collection is sharded correctly");
-        if (tempIndex == true) {
-          print("Dropping temporary index");
-          context.collection.dropIndex("tempIndex");
+      try {
+        if (assert.deepStrictEqual(JSON.parse(currentUnique), JSON.parse(requiredUnique))) {
+          print("Collection is using the correct unique index setting");
         }
-      } else {
-        print("Collection is not sharded correctly");
+      } catch (e) {
+        if (e instanceof assert.AssertionError) {
+          print("Collection is not using the correct unique index setting");
+          reIndex = true;
+        }
+      }
+      if (reIndex == true) {
+        print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to "+requiredUnique+" and forceRedistribution set to "+forceRedistribution);
+        var tempIndex = false;
+        try {
+          if (requiredShardKey._id === 1) {
+            print("Not creating index as using default _id index");
+            requiredUnique = false;
+          } else {
+            print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to " + requiredUnique);
+            print(requiredUnique);
+            var res = context.getCollection(collection).createIndex(requiredShardKey, { unique: requiredUnique, name: "shardKeyIndex" });
+            print("Index created: " + JSON.stringify(res));
+          }
+        } catch (e) {
+          if (/An existing index has the same name as the requested index/.test(e)) {
+            print("Index already exists, not creating");
+          } else {
+            print("Error creating index: " + e.errorResponse.errmsg);
+          }
+        }
+        var success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
+        if (success) {
+          print("Collection is sharded correctly");
+          if (tempIndex == true) {
+            print("Dropping temporary index");
+            context.collection.dropIndex("tempIndex");
+          }
+        } else {
+          print("Collection is not sharded correctly");
+        }
       }
     } else {
       print(database+"."+collection+" is not sharded");
