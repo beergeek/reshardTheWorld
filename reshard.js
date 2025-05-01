@@ -77,7 +77,12 @@ if (balancerState) {
   print("Balancer is running, even after attempting to stop, aborting");
   exit(1);
 }
-var shardCount = sh.listShards().length;
+var shard_details = sh.listShards();
+var shardCount = shard_details.length;
+var shardNames = [];
+shard_details.forEach(function(shard) {
+  shardNames.push(shard._id);
+});
 print("Shard Count: " + shardCount);
 var shardDist = sh.getShardedDataDistribution();
  
@@ -97,11 +102,14 @@ context.getCollectionNames().forEach(function(collection){
 
       // Check if we should be unsharded
       var described = false;
+      var count = 0;
       collection_setup[0].collections.forEach(function(coll) {
         if (coll.name == collection) {
           if (coll.shared == false) {
             print("Collection is not supposed to be sharded, unsharding");
-            sh.unshardCollection(database+"."+collection, "rs1");
+            var recpient_shard = shardNames[count % shardCount];
+            sh.unshardCollection(database+"."+collection, recpient_shard);
+            count += 1;
             return;
           } else if (coll.shared == true) {
             print("Collection is supposed to be sharded");
