@@ -19,14 +19,18 @@ Use cases:
 sh.getBalancerState()
 sh.stopBalancer()
 sh.getBalancerState()
-db.getSiblingDB("beers").createCollection("goodBeers");
-db.getSiblingDB("beers").createCollection("goodLagers");
-sh.enableSharding("beers");
-sh.shardCollection("beers.goodBeers", { "name": 1 });
-db.getSiblingDB("beers").createCollection("megaBeers");
-db.getSiblingDB("beers").createCollection("mainStreamBeers");
-sh.enableSharding("beers");
-sh.shardCollection("beers.mainStreamBeers", { "_id": 1 }, { unique: true });
-sh.shardCollection("beers.megaBeers", { "_id": 1 });
-sh.shardCollection("beers.goodBeers", { "name": 1 });
-sh.shardCollection("beers.goodLagers", { "_id": 1 });
+db.getSiblingDB("dev_beers").createCollection("goodBeers");
+db.getSiblingDB("dev_beers").createCollection("goodLagers");
+sh.enableSharding("dev_beers");
+sh.shardCollection("dev_beers.goodBeers", { "name": 1 });
+db.getSiblingDB("dev_beers").createCollection("megaBeers");
+db.getSiblingDB("dev_beers").createCollection("mainStreamBeers");
+db.getSiblingDB("dev_beers").createCollection("logos");
+db.getSiblingDB("dev_beers").createCollection("comments");
+sh.shardCollection("dev_beers.mainStreamBeers", { "_id": 1 }, { unique: true });
+sh.shardCollection("dev_beers.megaBeers", { "_id": 1 });
+sh.shardCollection("dev_beers.goodBeers", { "name": 1 });
+sh.shardCollection("dev_beers.goodLagers", { "_id": 1 });
+load("amazing_beer_list_with_breweries.js");
+load("boring_beer_list_with_breweries.js");
+load("funny_beer_list_with_breweries.js");
