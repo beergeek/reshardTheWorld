@@ -184,15 +184,11 @@ context.getCollectionNames().forEach(function(collection){
           reIndex = true;
         }
       }
-      try {
-        if (assert.deepStrictEqual(JSON.parse(currentUnique), JSON.parse(requiredUnique))) {
-          print("Collection is using the correct unique index setting");
-        }
-      } catch (e) {
-        if (e instanceof assert.AssertionError) {
-          print("Collection is not using the correct unique index setting");
-          reIndex = true;
-        }
+      if (currentUnique !== requiredUnique) {
+        print("Collection is not using the correct unique index setting");
+        if (reIndex === true && requiredUnique == true) {
+          print("We cannot transition from one unique index to another unique index or from a non-unique index to a unique index, this requires manual intervention");
+          return;
       }
       if (reIndex == true) {
         print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to "+requiredUnique+" and forceRedistribution set to "+forceRedistribution);
@@ -202,6 +198,8 @@ context.getCollectionNames().forEach(function(collection){
             print("Not creating index as using default _id index");
             requiredUnique = false;
           } else {
+            // if we are using _id as the shard key we cannot create another unique shard key, so we require two steps in doing this
+
             print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to " + requiredUnique);
             var res = context.getCollection(collection).createIndex(requiredShardKey, { unique: requiredUnique, name: "shardKeyIndex" });
             print("Index created: " + JSON.stringify(res));
