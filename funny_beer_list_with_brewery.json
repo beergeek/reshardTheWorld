@@ -1,4 +1,4 @@
-db.getSiblingDB("beers").getGCollection("mainStreamBeers").insertMany([
+db.getSiblingDB("beers").getCollection("mainStreamBeers").insertMany([
   {
     "name": "Beardy Banana Bock on Toast",
     "description": "Infused with essence of imaginary creatures.",
