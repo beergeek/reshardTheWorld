@@ -192,7 +192,6 @@ context.getCollectionNames().forEach(function(collection){
             requiredUnique = false;
           } else {
             print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to " + requiredUnique);
-            print(requiredUnique);
             var res = context.getCollection(collection).createIndex(requiredShardKey, { unique: requiredUnique, name: "shardKeyIndex" });
             print("Index created: " + JSON.stringify(res));
           }
