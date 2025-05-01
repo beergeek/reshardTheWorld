@@ -270,7 +270,7 @@ context.getCollectionNames().forEach(function(collection){
         return;
       }
     }
-
+    }
 })
 
 print("\n==========Completing ==========================================================\n");
