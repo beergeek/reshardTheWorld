@@ -15,7 +15,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
       reshardCollection(ns, key, unique, forceRedistribution, initialChunks, count + 1);
     } else if (e.errorResponse.code == 338) {
       print("Sharding operations already in progress, exiting this script")
-      exit(1);
+      return false;
     } else {
       print("Error: " + e.errorResponse.errmsg);
       return false;
