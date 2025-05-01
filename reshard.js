@@ -1,3 +1,7 @@
+/*
+NOTE: You cannot reshard a collection from one unique shard key or non-unique shard key to unique shard key. This requires a manual intervention
+to unshard and then shard the collection again letting the balancer do the work, not resharding.
+*/
 const assert = require('assert');
 function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunks = 90, count = 0) {
   if (count > 5) {
@@ -191,17 +195,14 @@ context.getCollectionNames().forEach(function(collection){
           return;
       }
       if (reIndex == true) {
-        print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to "+requiredUnique+" and forceRedistribution set to "+forceRedistribution);
+        print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to false and forceRedistribution set to "+forceRedistribution);
         var tempIndex = false;
         try {
           if (requiredShardKey._id === 1) {
             print("Not creating index as using default _id index");
-            requiredUnique = false;
           } else {
-            // if we are using _id as the shard key we cannot create another unique shard key, so we require two steps in doing this
-
-            print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to " + requiredUnique);
-            var res = context.getCollection(collection).createIndex(requiredShardKey, { unique: requiredUnique, name: "shardKeyIndex" });
+            print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to false");
+            var res = context.getCollection(collection).createIndex(requiredShardKey);
             print("Index created: " + JSON.stringify(res));
           }
         } catch (e) {
@@ -211,7 +212,7 @@ context.getCollectionNames().forEach(function(collection){
             print("Error creating index: " + e.errorResponse.errmsg);
           }
         }
-        var success = reshardCollection(database+"."+collection, requiredShardKey, requiredUnique, forceRedistribution);
+        var success = reshardCollection(database+"."+collection, requiredShardKey, false, forceRedistribution);
         if (success) {
           print("Collection is sharded correctly");
           if (tempIndex == true) {
