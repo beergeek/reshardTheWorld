@@ -13,6 +13,7 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
     print(result);
     return true;
   } catch(e) {
+    print(e.errorResponse);
     if (e.errorResponse.code === 4952606) {
       print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
       print(e.errorResponse.errmsg);
