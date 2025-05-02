@@ -4,18 +4,13 @@ to unshard and then shard the collection again letting the balancer do the work,
 */
 const assert = require('assert');
 
-function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunks = 90, count = 0) {
-  if (count > 5) {
-    return false;
-  }
+function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunks = 90) {
   try {
-    var result = db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
-    print(result);
+    db.adminCommand({ reshardCollection: ns, key: key, unique: unique, forceRedistribution: forceRedistribution, numInitialChunks: numInitialChunks });
     return true;
-  } catch(e) {
-    print(e);
+  } catch (e) {
     if (e.errorResponse.code === 4952606) {
-      print("Collection needs less than "+numInitialChunks+" chunks to be resharded");
+      print("Collection needs less than " + numInitialChunks + " chunks to be resharded");
       print(e.errorResponse.errmsg);
       var exploded_msg = e.errorResponse.errmsg.split(" ");
       var initialChunks = parseInt(exploded_msg[exploded_msg.length - 2]);
@@ -34,49 +29,52 @@ function reshardCollection(ns, key, unique, forceRedistribution, numInitialChunk
   }
 }
 
+function getStats(context, collection) {
+  var stats = context.getCollection(collection).stats();
+  return stats;
+}
+  
+
 var collection_setup = [
   {
     "name": "dev_beers",
     "collections": [
       {
         "name": "goodBeers",
-        "shared": true,
+        "sharded": true,
         "shardKey": { "brewery": 1, "name": 1 },
         "unique": true,
       },
       {
         "name": "goodLagers",
-        "shared": true,
+        "sharded": true,
         "shardKey": { "brewery": 1, "name": 1 },
         "unique": true,
       },
       {
         "name": "mainStreamBeers",
-        "shared": true,
+        "sharded": true,
         "shardKey": { "_id": 1 },
         "unique": true
       },
       {
         "name": "megaBeers",
-        "shared": false
+        "sharded": false
       },
       {
         "name": "magaLagers",
-        "shared": false,
+        "sharded": false,
       },
       {
         "name": "logs",
-        "shared": true,
+        "sharded": true,
         "shardKey": { "_id": 1 },
         "unique": false
       }
     ]
   }
 ]
-var database=collection_setup[0].name;
-var configDB = db.getSiblingDB("config");
- 
-context=db.getSiblingDB(database);
+
 
 // Stop the balancer for resharding operations
 sh.stopBalancer();
@@ -90,21 +88,29 @@ var shard_details = sh.listShards();
 var shardCount = shard_details.length;
 var shardNames = [];
 // Get the shard names
-shard_details.forEach(function(shard) {
+shard_details.forEach(function (shard) {
   shardNames.push(shard._id);
 });
 print("Shard Count: " + shardCount);
 var shardDist = sh.getShardedDataDistribution();
+var configDB = db.getSiblingDB("config");
 
-// Iterate over the collections in the database
-context.getCollectionNames().forEach(function(collection){
+// count for unsharding collections
+var count = 0;
+collection_setup.forEach(function (database_obj) {
+  var database = database_obj.name;
 
-    print("\n"+database+"."+collection+"\n=========================================================");
+  context = db.getSiblingDB(database);
 
-    var stats = context.getCollection(collection).stats();
+  // Iterate over the collections in the database
+  context.getCollectionNames().forEach(function (collection) {
+
+    print("\n" + database + "." + collection + "\n=========================================================");
+
+    var stats = getStats(context, collection);
     // Check if the collection is sharded
     if (stats.sharded) {
-      print(database+"."+collection+" is sharded");
+      print(database + "." + collection + " is sharded");
 
       var currentShardKey = null;
       var currentUnique = false;
@@ -114,37 +120,33 @@ context.getCollectionNames().forEach(function(collection){
 
       // Check if we should be unsharded
       var described = false;
-      var count = 0;
       // Check if the collection is supposed to be sharded or unsharded, and get the shard key and unique index settings
-      collection_setup[0].collections.forEach(function(coll) {
+      for (var i = 0; i < database_obj.collections.length; i++) {
+        var coll = database_obj.collections[i];
         if (coll.name == collection) {
-          if (coll.shared == false) {
-            print("Collection is not supposed to be sharded, unsharding");
+          described = true;
+          if (coll.sharded == false) {
             var recpient_shard = shardNames[count % shardCount];
-            sh.unshardCollection(database+"."+collection, recpient_shard);
+            print("Collection is not supposed to be sharded, unsharding to "+ recpient_shard);
+            sh.unshardCollection(database + "." + collection, recpient_shard);
             count += 1;
-            return;
-          } else if (coll.shared == true) {
+          } else if (coll.sharded == true) {
             print("Collection is supposed to be sharded");
             requiredShardKey = coll.shardKey;
             if (typeof coll.unique === "undefined") {
               requiredUnique = false;
-            } else if (JSON.stringify(requiredShardKey) == JSON.stringify({ "_id": 1 })) {
-              print("Required shard key is _id, so always unique");
-              requiredUnique = true;
             } else {
               requiredUnique = coll.unique;
             }
-            described = true;
-            shared = true;
+            sharded = true;
           } else {
             print("Collection is not registered as sharded or unsharded, skipping");
-            return;
           }
+          break;
         }
-      })
+      }
       if (described == false) {
-        print(database+"."+collection+" collection is not registered");
+        print(database + "." + collection + " collection is not registered");
         return;
       }
 
@@ -153,18 +155,22 @@ context.getCollectionNames().forEach(function(collection){
         print("Collection has less than 1000 documents, not redistributing");
         forceRedistribution = false;
       } else {
-        shardDist.forEach(function(coll) {
+        for (var i = 0; i < shardDist.length; i++) {
+          var coll = shardDist[i];
           if (coll.ns == database + "." + collection) {
             print("Collection is on " + coll.shards.length + " shards");
             if (coll.shards.length < shardCount) {
               forceRedistribution = true;
             }
+            break;
           }
-        })
+        }
       }
 
       // get current shard key and unique index settings
-      configDB.collections.find({}).forEach(function(ns) {
+      var shard_details = configDB.shards.find({}).toArray();
+      for (var i = 0; i < shard_details.length; i++) {
+        var ns = shard_details[i];
         if (ns._id == database + "." + collection) {
           currentShardKey = ns.key;
           if (ns.unique == null) {
@@ -174,8 +180,9 @@ context.getCollectionNames().forEach(function(collection){
           } else {
             currentUnique = false;
           }
+          break;
         }
-      });
+      }
       print("Current Shard Key: " + JSON.stringify(currentShardKey));
       print("Current Unique Value: " + currentUnique);
       print("Required Shard Key: " + JSON.stringify(requiredShardKey));
@@ -183,37 +190,32 @@ context.getCollectionNames().forEach(function(collection){
       var reIndex = false;
 
       // Check if the collection should be using the right shard key
-      if (requiredShardKey === currentShardKey && requiredUnique === currentUnique && forceRedistribution == false) {
-        print("Collection is using the correct shard key and unique setting, and does not need to be redistributed");
-        return;
-      }
       try {
-        if (assert.deepStrictEqual(JSON.parse(currentShardKey), JSON.parse(requiredShardKey))) {
+        if (assert.deepStrictEqual(JSON.stringify(currentShardKey), JSON.stringify(requiredShardKey))) {
           print("Collection is using the correct shard key");
         }
       } catch (e) {
         if (e instanceof assert.AssertionError) {
-          print("Collection is not using the correct shard key"+ JSON.stringify(e));
+          print("Collection is not using the correct shard key" + JSON.stringify(e));
           reIndex = true;
         }
       }
       // Check if the collection should be using the right unique index setting
       if (currentUnique !== requiredUnique) {
         print("Collection is not using the correct unique index setting");
-        if (reIndex === true && requiredUnique == true) {
+        if (requiredUnique == true) {
           print("We cannot transition from one unique index to another unique index or from a non-unique index to a unique index, this requires manual intervention");
           return;
         }
       }
       // If we need to reshard go ahead and create the index and then reshard
       if (reIndex == true) {
-        print("About to reshard "+database+"."+collection+" with shard key "+JSON.stringify(requiredShardKey)+" and unique indexes set to false and forceRedistribution set to "+forceRedistribution);
-        var tempIndex = false;
+        print("About to reshard " + database + "." + collection + " with shard key " + JSON.stringify(requiredShardKey) + " and unique indexes set to false and forceRedistribution set to " + forceRedistribution);
         try {
           if (requiredShardKey._id === 1) {
             print("Not creating index as using default _id index");
           } else {
-            print("Creating index on shard key: " + JSON.stringify(requiredShardKey)+" with unique set to false");
+            print("Creating index on shard key: " + JSON.stringify(requiredShardKey) + " with unique set to false");
             var res = context.getCollection(collection).createIndex(requiredShardKey);
             print("Index created: " + JSON.stringify(res));
           }
@@ -224,31 +226,31 @@ context.getCollectionNames().forEach(function(collection){
             print("Error creating index: " + e.errorResponse.errmsg);
           }
         }
-        var success = reshardCollection(database+"."+collection, requiredShardKey, false, forceRedistribution);
+        print("Starting resharding");
+        var success = reshardCollection(database + "." + collection, requiredShardKey, false, forceRedistribution);
         if (success) {
           print("Collection is sharded correctly");
-          if (tempIndex == true) {
-            print("Dropping temporary index");
-            context.collection.dropIndex("tempIndex");
-          }
         } else {
           print("Collection is not sharded correctly");
         }
+      } else {
+        print("Collection is using the correct shard key and unique setting, and does not need to be redistributed");
       }
     } else {
-      print(database+"."+collection+" is not sharded");
+      print(database + "." + collection + " is not sharded");
       var described = false;
-      collection_setup[0].collections.forEach(function(coll) {
+      for (var i = 0; i < database_obj.collections.length; i++) {
+        var coll = database_obj.collections[i];
         if (coll.name == collection) {
+          described = true;
           if (coll.sharded == false) {
             print("Collection is supposed to be unsharded, skipping");
             return;
-          } else if (coll.shared == true) {
+          } else if (coll.sharded == true) {
             print("Collection is supposed to be sharded");
             requiredShardKey = coll.shardKey;
             requiredUnique = coll.unique;
-            described = true;
-            shared = true;
+            sharded = true;
             try {
               print("Creating index on shard key: " + JSON.stringify(requiredShardKey));
               if (requiredShardKey._id === 1) {
@@ -267,21 +269,27 @@ context.getCollectionNames().forEach(function(collection){
             }
             try {
               print("Sharing collection");
-              sh.shardAndDistributeCollection(database+"."+collection, nonIDKey);
+              sh.shardCollection(database + "." + collection, requiredShardKey);
+              var success = reshardCollection(database + "." + collection, requiredShardKey, false, forceRedistribution);
+              if (success) {
+                print("Collection is sharded correctly");
+              } else {
+                print("Collection is not sharded correctly");
+              }
             } catch (e) {
               print(e.errorRsponse.errmsg);
             }
           } else {
             print("Collection is not registered as sharded or unsharded, skipping");
-            return;
           }
+          break;
         }
-      })
+      }
       if (described == false) {
-        print(database+"."+collection+" collection is not registered");
-        return;
+        print(database + "." + collection + " collection is not registered");
       }
     }
+  })
 })
 
 print("\n==========Completing ==========================================================\n");
@@ -293,4 +301,3 @@ if (balancerState) {
   print("Balancer is not running");
 }
 
-    
