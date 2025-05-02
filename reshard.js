@@ -126,9 +126,9 @@ collection_setup.forEach(function (database_obj) {
         if (coll.name == collection) {
           described = true;
           if (coll.sharded == false) {
-            var recpient_shard = shardNames[count % shardCount];
-            print("Collection is not supposed to be sharded, unsharding to "+ recpient_shard);
-            sh.unshardCollection(database + "." + collection, recpient_shard);
+            var recipient_shard = shardNames[count % shardCount];
+            print("Collection is not supposed to be sharded, unsharding to "+ recipient_shard);
+            sh.unshardCollection(database + "." + collection, recipient_shard);
             count += 1;
           } else if (coll.sharded == true) {
             print("Collection is supposed to be sharded");
@@ -163,7 +163,7 @@ collection_setup.forEach(function (database_obj) {
               forceRedistribution = true;
             }
             break;
-          }
+          } 
         }
       }
 
