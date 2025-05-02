@@ -263,6 +263,8 @@ collection_setup.forEach(function (database_obj) {
             } catch (e) {
               if (/An existing index has the same name as the requested index/.test(e)) {
                 print("Index already exists, not creating");
+              } else if (/Index already exists with a different name/.test(e)) {
+                print("Index already exists, not creating");
               } else {
                 print("Error creating index: " + e);
               }
